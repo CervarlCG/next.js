@@ -27,7 +27,7 @@ env:
   PNPM_VERSION: 7.24.3
   NODE_MAINTENANCE_VERSION: 16
   NODE_LTS_VERSION: 18
-  TEST_CONCURRENCY: 4
+  TEST_CONCURRENCY: 8
   # TODO: remove after testing
   # NEXT_TEST_CONTINUE_ON_ERROR: 'true'
 
@@ -68,6 +68,15 @@ jobs:
 
       - run: git clean -xdf
 
+      # normalize versions before build-native for better cache hits
+      - run: node scripts/normalize-version-bump.js
+        name: normalize versions
+
+      - run: turbo run build-native-release --summarize true -- --target x86_64-unknown-linux-gnu
+
+      # undo normalize version changes for install/build
+      - run: git checkout .
+
       - run: pnpm store path
 
       - run: pnpm install
@@ -75,8 +84,6 @@ jobs:
 
       - run: pnpm build
         if: ${{ inputs.skipInstallBuild != 'yes' }}
-
-      - run: turbo run build-native-release --summarize true -- --target x86_64-unknown-linux-gnu
 
       - run: pnpm playwright install-deps
         if: ${{ inputs.skipInstallBuild != 'yes' }}
